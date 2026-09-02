@@ -194,14 +194,37 @@ if data_source is not None:
         if not df_upah_total.empty:
           create_bar_chart(df_upah_total, "Biaya Upah SDM Total")
 
-      with tab5:
-        # Listrik & Efisiensi
-        df_sub = df[
+     with tab5:
+        st.markdown("#### ⚡ Analisis Pemakaian Listrik & Efisiensi")
+
+        # 1. Total KWH Listrik (Skala Ratusan Ribu)
+        df_kwh_total = df[
             df["Keterangan"].str.contains(
-                "kWh|Listrik|Effisiensi", case=False, na=False
+                "Total KWH Pemakaian Listrik", case=False, na=False
             )
         ]
-        create_bar_chart(df_sub, "Konsumsi Listrik & Efisiensi Akumulasi")
+        if not df_kwh_total.empty:
+          create_bar_chart(
+              df_kwh_total, "1. Total Pemakaian Listrik (KWH Total)"
+          )
+
+        # 2. KWH Per Satuan / Ratio (Skala Ratusan & Desimal)
+        df_kwh_ratio = df[
+            df["Keterangan"].str.contains(
+                "KWH Listrik Per", case=False, na=False
+            )
+        ]
+        if not df_kwh_ratio.empty:
+          create_bar_chart(
+              df_kwh_ratio, "2. Konsumsi Listrik Per Satuan (Per Bale & Per Kg)"
+          )
+
+        # 3. Effisiensi Akumulasi (Skala Persentase %)
+        df_eff = df[
+            df["Keterangan"].str.contains("Effisiensi", case=False, na=False)
+        ]
+        if not df_eff.empty:
+          create_bar_chart(df_eff, "3. Effisiensi Akumulasi (%)")
 
       with tab6:
         st.markdown(
