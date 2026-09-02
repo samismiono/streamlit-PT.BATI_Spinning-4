@@ -148,6 +148,37 @@ if data_source is not None:
         )
         st.plotly_chart(fig, use_container_width=True)
 
+     # 2. Grafik Komparasi Berdasarkan Kategori Data
+      st.subheader("📊 Grafik Komparasi Berdasarkan Kategori Data")
+
+      tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+          "📦 Total Produksi",
+          "📈 Rerata & Count",
+          "👥 SDM & Hari Kerja",
+          "💰 Biaya Upah SDM",
+          "⚡ Listrik & Efisiensi",
+          "📋 Tabel Lengkap (16 Variabel)",
+      ])
+
+      # Fungsi pembuat grafik reusable
+      def create_bar_chart(sub_df, title):
+        df_melted = sub_df.melt(
+            id_vars=["Keterangan"],
+            value_vars=month_cols,
+            var_name="Bulan",
+            value_name="Nilai",
+        )
+        fig = px.bar(
+            df_melted,
+            x="Keterangan",
+            y="Nilai",
+            color="Bulan",
+            barmode="group",
+            text_auto=".2f",
+            title=title,
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
       with tab1:
         # Total Produksi (Bale & Lbs)
         df_sub = df[
@@ -178,7 +209,6 @@ if data_source is not None:
 
       with tab4:
         st.markdown("#### 💵 Analisis Biaya Upah SDM (Skala Dipisah)")
-        # Upah SDM Shift
         df_upah_shift = df[
             df["Keterangan"].str.contains("Upah", case=False, na=False)
             & df["Keterangan"].str.contains("Shift", case=False, na=False)
@@ -186,7 +216,6 @@ if data_source is not None:
         if not df_upah_shift.empty:
           create_bar_chart(df_upah_shift, "Biaya Upah SDM Produksi Shift")
 
-        # Upah SDM Total
         df_upah_total = df[
             df["Keterangan"].str.contains("Upah", case=False, na=False)
             & df["Keterangan"].str.contains("Total", case=False, na=False)
@@ -194,10 +223,8 @@ if data_source is not None:
         if not df_upah_total.empty:
           create_bar_chart(df_upah_total, "Biaya Upah SDM Total")
 
-     with tab5:
+      with tab5:
         st.markdown("#### ⚡ Analisis Pemakaian Listrik & Efisiensi")
-
-        # 1. Total KWH Listrik (Skala Ratusan Ribu)
         df_kwh_total = df[
             df["Keterangan"].str.contains(
                 "Total KWH Pemakaian Listrik", case=False, na=False
@@ -208,7 +235,6 @@ if data_source is not None:
               df_kwh_total, "1. Total Pemakaian Listrik (KWH Total)"
           )
 
-        # 2. KWH Per Satuan / Ratio (Skala Ratusan & Desimal)
         df_kwh_ratio = df[
             df["Keterangan"].str.contains(
                 "KWH Listrik Per", case=False, na=False
@@ -219,7 +245,6 @@ if data_source is not None:
               df_kwh_ratio, "2. Konsumsi Listrik Per Satuan (Per Bale & Per Kg)"
           )
 
-        # 3. Effisiensi Akumulasi (Skala Persentase %)
         df_eff = df[
             df["Keterangan"].str.contains("Effisiensi", case=False, na=False)
         ]
@@ -231,6 +256,6 @@ if data_source is not None:
             "### 📋 Seluruh 16 Variabel Indikator Kinerja Produksi Spinning 4"
         )
         st.dataframe(df, use_container_width=True)
-
+          
   except Exception as e:
     st.error(f"Terjadi kesalahan saat memproses data: {e}")
