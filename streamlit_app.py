@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -10,16 +11,26 @@ st.set_page_config(
 
 st.title("🏭 Dashboard Kinerja Produksi Spinning 4")
 st.write("Analisis visual komparatif indikator kinerja produksi bulanan.")
+ type=["csv", "xlsx"])
+uploaded_file = st.file_uploader("Pilih file Excel (.xlsx) atau CSV Produksi", type=['csv', 'xlsx'])
 
-uploaded_file = st.file_uploader("Pilih file Excel (.xlsx) atau CSV Produksi", type=["csv", "xlsx"])
-
+# Penentuan sumber data (Prioritas: Upload > File Default dari GitHub)
+data_source = None
 if uploaded_file is not None:
+    data_source = uploaded_file
+elif os.path.exists("data_produksi.csv"):
+    data_source = "data_produksi.csv"
+
+if data_source is not None:
     try:
-        # Membaca data (header berada di baris ke-3 Excel / index 2)
-        if uploaded_file.name.endswith('.xlsx'):
-            df_raw = pd.read_excel(uploaded_file, header=2)
+        # Membaca data berdasarkan tipe sumber data
+        file_name = data_source.name if hasattr(data_source, 'name') else data_source
+        if file_name.endswith('.xlsx'):
+            df_raw = pd.read_excel(data_source, skiprows=2)
         else:
-            df_raw = pd.read_csv(uploaded_file, skiprows=2)
+            df_raw = pd.read_csv(data_source, skiprows=2)
+
+
 
         df_raw.columns = [str(col).strip() for col in df_raw.columns]
         
