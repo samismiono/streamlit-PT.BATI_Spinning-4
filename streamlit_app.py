@@ -8,7 +8,7 @@ st.set_page_config(
 )
 
 st.title("🏭 Dashboard Kinerja Produksi Spinning 4")
-st.write("Analisis visual komparatif indikator kinerja produksi bulanan.")
+st.write("Analisis visual komparatif 16 indikator kinerja produksi bulanan.")
 
 # Tombol upload (opsional)
 uploaded_file = st.file_uploader(
@@ -35,22 +35,31 @@ if data_source is not None:
     df_raw.columns = [str(col).strip() for col in df_raw.columns]
 
     if "Keterangan" in df_raw.columns:
-      df = df_raw.dropna(subset=["Keterangan"])
-      month_cols = [col for col in df.columns if col != "Keterangan"]
+      df = df_raw.dropna(subset=["Keterangan"]).copy()
+
+      # Filter kolom bulan (membuang 'No.', 'Keterangan', dan Unnamed)
+      month_cols = [
+          col
+          for col in df.columns
+          if col not in ["No.", "Keterangan"] and not col.startswith("Unnamed")
+      ]
 
       for m_col in month_cols:
         df[m_col] = df[m_col].astype(str).str.replace(",", "")
         df[m_col] = pd.to_numeric(df[m_col], errors="coerce")
 
-      st.success("Data berhasil diproses!")
+      st.success(
+          f"Data berhasil diproses! Total {len(df)} indikator/variabel"
+          " terdeteksi."
+      )
       st.markdown("---")
 
-      # 1. Ringkasan Kartu Utama (KPI) - Perbandingan 2 Bulan Terakhir
+      # 1. Ringkasan Kartu Utama (KPI)
       st.subheader("📌 Ringkasan Indikator Utama")
 
       if len(month_cols) >= 2:
-        m_prev = month_cols[-2]  # Juni 2024
-        m_curr = month_cols[-1]  # Juli 2024
+        m_prev = month_cols[-2]
+        m_curr = month_cols[-1]
         st.caption(f"Perbandingan angka kinerja: **{m_curr}** vs **{m_prev}**")
       else:
         m_prev = None
@@ -113,125 +122,91 @@ if data_source is not None:
 
       tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
           "📦 Total Produksi",
-          "📈 Rerata Produksi & Count",
-          "🎥 SDM & Hari Kerja",
-          "⚡ Pemakaian Listrik",
-          "💰 Biaya Upah",
-          "📋 Tabel Lengkap",
+          "📈 Rerata & Count",
+          "👥 SDM & Hari Kerja",
+          "💰 Biaya Upah SDM",
+          "⚡ Listrik & Efisiensi",
+          "📋 Tabel Lengkap (16 Variabel)",
       ])
 
-      with tab1:
-        df_prod = df[
-            df["Keterangan"].str.contains("Produksi", case=False, na=False)
-        ]
-        df_prod_melted = df_prod.melt(
+      # Fungsi pembuat grafik reusable
+      def create_bar_chart(sub_df, title):
+        df_melted = sub_df.melt(
             id_vars=["Keterangan"],
             value_vars=month_cols,
             var_name="Bulan",
             value_name="Nilai",
         )
-        fig_prod = px.bar(
-            df_prod_melted,
+        fig = px.bar(
+            df_melted,
             x="Keterangan",
             y="Nilai",
             color="Bulan",
             barmode="group",
             text_auto=".2f",
-            title="Perbandingan Produksi (Bale & Lbs)",
+            title=title,
         )
-        st.plotly_chart(fig_prod, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
+
+      with tab1:
+        # Total Produksi (Bale & Lbs)
+        df_sub = df[
+            df["Keterangan"].str.contains(
+                "Produksi Total", case=False, na=False
+            )
+        ]
+        create_bar_chart(df_sub, "Perbandingan Total Produksi (Bale & Lbs)")
 
       with tab2:
-        df_avg = df[
+        # Rerata & Count
+        df_sub = df[
             df["Keterangan"].str.contains(
                 "Rerata|Count", case=False, na=False
             )
         ]
-        df_avg_melted = df_avg.melt(
-            id_vars=["Keterangan"],
-            value_vars=month_cols,
-            var_name="Bulan",
-            value_name="Nilai",
-        )
-        fig_avg = px.bar(
-            df_avg_melted,
-            x="Keterangan",
-            y="Nilai",
-            color="Bulan",
-            barmode="group",
-            text_auto=".2f",
-            title="Rerata Produksi Harian & Ne Count",
-        )
-        st.plotly_chart(fig_avg, use_container_width=True)
+        create_bar_chart(df_sub, "Rerata Produksi Harian & Average Count (RSF)")
 
       with tab3:
-        df_sdm = df[
+        # Ketenagakerjaan & Jam Kerja
+        df_sub = df[
             df["Keterangan"].str.contains(
-                "SDM|Hari Kerja|Effisiensi", case=False, na=False
+                "SDM|Hari Kerja|Man Per Bale", case=False, na=False
             )
+            & ~df["Keterangan"].str.contains("Upah", case=False, na=False)
         ]
-        df_sdm_melted = df_sdm.melt(
-            id_vars=["Keterangan"],
-            value_vars=month_cols,
-            var_name="Bulan",
-            value_name="Nilai",
-        )
-        fig_sdm = px.bar(
-            df_sdm_melted,
-            x="Keterangan",
-            y="Nilai",
-            color="Bulan",
-            barmode="group",
-            text_auto=".2f",
-            title="Ketenagakerjaan & Jam Kerja",
-        )
-        st.plotly_chart(fig_sdm, use_container_width=True)
+        create_bar_chart(df_sub, "Ketenagakerjaan, Shift & Man Per Bale")
 
       with tab4:
-        df_elec = df[
-            df["Keterangan"].str.contains(
-                "kWh|Listrik", case=False, na=False
-            )
+        st.markdown("#### 💵 Analisis Biaya Upah SDM (Skala Dipisah)")
+        # Upah SDM Shift
+        df_upah_shift = df[
+            df["Keterangan"].str.contains("Upah", case=False, na=False)
+            & df["Keterangan"].str.contains("Shift", case=False, na=False)
         ]
-        df_elec_melted = df_elec.melt(
-            id_vars=["Keterangan"],
-            value_vars=month_cols,
-            var_name="Bulan",
-            value_name="Nilai",
-        )
-        fig_elec = px.bar(
-            df_elec_melted,
-            x="Keterangan",
-            y="Nilai",
-            color="Bulan",
-            barmode="group",
-            text_auto=".2f",
-            title="Konsumsi Pemakaian Listrik (kWh)",
-        )
-        st.plotly_chart(fig_elec, use_container_width=True)
+        if not df_upah_shift.empty:
+          create_bar_chart(df_upah_shift, "Biaya Upah SDM Produksi Shift")
+
+        # Upah SDM Total
+        df_upah_total = df[
+            df["Keterangan"].str.contains("Upah", case=False, na=False)
+            & df["Keterangan"].str.contains("Total", case=False, na=False)
+        ]
+        if not df_upah_total.empty:
+          create_bar_chart(df_upah_total, "Biaya Upah SDM Total")
 
       with tab5:
-        df_upah = df[
-            df["Keterangan"].str.contains("Upah", case=False, na=False)
+        # Listrik & Efisiensi
+        df_sub = df[
+            df["Keterangan"].str.contains(
+                "kWh|Listrik|Effisiensi", case=False, na=False
+            )
         ]
-        df_upah_melted = df_upah.melt(
-            id_vars=["Keterangan"],
-            value_vars=month_cols,
-            var_name="Bulan",
-            value_name="Nilai",
-        )
-        fig_upah = px.bar(
-            df_upah_melted,
-            x="Keterangan",
-            y="Nilai",
-            color="Bulan",
-            barmode="group",
-            text_auto=".2f",
-            title="Perbandingan Biaya Upah SDM (Rupiah)",
-        )
-        st.plotly_chart(fig_upah, use_container_width=True)
+        create_bar_chart(df_sub, "Konsumsi Listrik & Efisiensi Akumulasi")
 
       with tab6:
+        st.markdown(
+            "### 📋 Seluruh 16 Variabel Indikator Kinerja Produksi Spinning 4"
+        )
         st.dataframe(df, use_container_width=True)
 
   except Exception as e:
